@@ -1,161 +1,390 @@
-﻿using System;
-using System.IO;
-using System.Reflection;
+using System;
+using System.Collections.Generic;
+using System.Dynamic;
+using System.Globalization;
+using System.Linq;
 
-// NOTE: This file contains very detailed examples for Attributes and File Handling.
-// NOTE: Every comment is written as a "note" to explain what the code is doing.
+namespace ConsoleApp3;
 
-/// <summary>
-/// NOTE: This custom attribute will be used to tag classes and methods with metadata.
-/// NOTE: Attributes are like "labels" you can attach to code so you can read them later.
-/// </summary>
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = false)]
-public sealed class ExampleNoteAttribute : Attribute
+public static class Program
 {
-    // NOTE: This is a property that stores the note text.
-    public string Text { get; }
+    private static readonly List<dynamic> Books = new();
+    private static int _nextId = 1;
 
-    // NOTE: This constructor lets us set the note text when we apply the attribute.
-    public ExampleNoteAttribute(string text)
-    {
-        Text = text;
-    }
-}
-
-/// <summary>
-/// NOTE: This class is the startup class for the project (contains Main).
-/// NOTE: We will run two detailed examples: Attributes and File Handling.
-/// </summary>
-[ExampleNote("MainClass demonstrates Attribute usage and File handling step-by-step.")]
-public class MainClass
-{
-    /// <summary>
-    /// NOTE: Main is the entry point of this console app.
-    /// NOTE: The project should be configured so this class is the startup class.
-    /// </summary>
     public static void Main(string[] args)
     {
-        // NOTE: Provide a clear header so users know what the program is doing.
-        Console.WriteLine("=== Detailed Examples: Attributes and File Handling ===");
-        Console.WriteLine();
-
-        // NOTE: Run the Attribute example first so we learn metadata basics.
-        RunAttributeExample();
-
-        // NOTE: Add a blank line to visually separate the examples.
-        Console.WriteLine();
-
-        // NOTE: Run the File Handling example next so we learn how to read/write files.
-        RunFileHandlingExample();
-
-        // NOTE: Pause at the end so the console window stays open.
-        Console.WriteLine();
-        Console.WriteLine("Press ENTER to exit...");
-        Console.ReadLine();
+        SeedSampleBooks();
+        ShowMainMenu();
     }
 
-    /// <summary>
-    /// NOTE: This method demonstrates how to define, apply, and read Attributes.
-    /// </summary>
-    [ExampleNote("Attribute example method.")]
-    private static void RunAttributeExample()
+    private static void ShowMainMenu()
     {
-        // NOTE: Start by describing the example in the console output.
-        Console.WriteLine("[Attribute Example]");
-
-        // NOTE: Get the Type object for MainClass so we can inspect its attributes.
-        Type targetType = typeof(MainClass);
-
-        // NOTE: Read all ExampleNoteAttribute instances from the class itself.
-        ExampleNoteAttribute[] classNotes = targetType.GetCustomAttributes<ExampleNoteAttribute>(inherit: false);
-
-        // NOTE: Print how many attributes were found on the class.
-        Console.WriteLine($"Class '{targetType.Name}' has {classNotes.Length} ExampleNoteAttribute(s).");
-
-        // NOTE: Loop over each attribute instance and print its Text property.
-        foreach (ExampleNoteAttribute note in classNotes)
+        bool exitRequested = false;
+        while (!exitRequested)
         {
-            Console.WriteLine($" - Class Note: {note.Text}");
-        }
+            Console.Clear();
+            Console.WriteLine("=== Book Library Management System ===");
+            Console.WriteLine("1. Admin");
+            Console.WriteLine("2. User");
+            Console.WriteLine("3. Exit");
+            Console.Write("Select an option: ");
 
-        // NOTE: Get the MethodInfo for RunAttributeExample so we can read its attributes.
-        MethodInfo? methodInfo = targetType.GetMethod(nameof(RunAttributeExample), BindingFlags.NonPublic | BindingFlags.Static);
-
-        // NOTE: Ensure we found the method before reading attributes.
-        if (methodInfo is not null)
-        {
-            // NOTE: Get the attributes applied to this method.
-            ExampleNoteAttribute[] methodNotes = methodInfo.GetCustomAttributes<ExampleNoteAttribute>(inherit: false);
-
-            // NOTE: Print how many attributes were found on the method.
-            Console.WriteLine($"Method '{methodInfo.Name}' has {methodNotes.Length} ExampleNoteAttribute(s).");
-
-            // NOTE: Display each note from the method attribute list.
-            foreach (ExampleNoteAttribute note in methodNotes)
+            switch (Console.ReadLine())
             {
-                Console.WriteLine($" - Method Note: {note.Text}");
+                case "1":
+                    ShowAdminMenu();
+                    break;
+                case "2":
+                    ShowUserMenu();
+                    break;
+                case "3":
+                    exitRequested = true;
+                    break;
+                default:
+                    PrintMessage("Invalid choice. Press ENTER to try again.");
+                    break;
             }
         }
-        else
+    }
+
+    private static void ShowAdminMenu()
+    {
+        bool backRequested = false;
+        while (!backRequested)
         {
-            // NOTE: If the method wasn't found, tell the user (this should not happen).
-            Console.WriteLine("RunAttributeExample method could not be found via reflection.");
+            Console.Clear();
+            Console.WriteLine("--- Admin Menu ---");
+            Console.WriteLine("1. Add Book");
+            Console.WriteLine("2. Update Book");
+            Console.WriteLine("3. Delete Book");
+            Console.WriteLine("4. View All Books");
+            Console.WriteLine("5. Back");
+            Console.Write("Select an option: ");
+
+            switch (Console.ReadLine())
+            {
+                case "1":
+                    AddBook();
+                    break;
+                case "2":
+                    UpdateBook();
+                    break;
+                case "3":
+                    DeleteBook();
+                    break;
+                case "4":
+                    ViewAllBooks();
+                    break;
+                case "5":
+                    backRequested = true;
+                    break;
+                default:
+                    PrintMessage("Invalid choice. Press ENTER to try again.");
+                    break;
+            }
         }
     }
 
-    /// <summary>
-    /// NOTE: This method demonstrates detailed File Handling.
-    /// NOTE: It shows creating a directory, writing a file, appending, and reading.
-    /// </summary>
-    [ExampleNote("File handling example method.")]
-    private static void RunFileHandlingExample()
+    private static void ShowUserMenu()
     {
-        // NOTE: Start by describing the example in the console output.
-        Console.WriteLine("[File Handling Example]");
+        bool backRequested = false;
+        while (!backRequested)
+        {
+            Console.Clear();
+            Console.WriteLine("--- User Menu ---");
+            Console.WriteLine("1. Browse Books");
+            Console.WriteLine("2. Search Book by Name");
+            Console.WriteLine("3. Search Book by Publisher");
+            Console.WriteLine("4. View Highest Price Book");
+            Console.WriteLine("5. View Lowest Price Book");
+            Console.WriteLine("6. Back");
+            Console.Write("Select an option: ");
 
-        // NOTE: Decide where to create example files.
-        // NOTE: Environment.CurrentDirectory is usually the app's working folder.
-        string baseFolder = Path.Combine(Environment.CurrentDirectory, "ExampleFiles");
+            switch (Console.ReadLine())
+            {
+                case "1":
+                    ViewAllBooks();
+                    break;
+                case "2":
+                    SearchByName();
+                    break;
+                case "3":
+                    SearchByPublisher();
+                    break;
+                case "4":
+                    ShowHighestPriceBook();
+                    break;
+                case "5":
+                    ShowLowestPriceBook();
+                    break;
+                case "6":
+                    backRequested = true;
+                    break;
+                default:
+                    PrintMessage("Invalid choice. Press ENTER to try again.");
+                    break;
+            }
+        }
+    }
 
-        // NOTE: Create the directory if it doesn't already exist.
-        Directory.CreateDirectory(baseFolder);
-        Console.WriteLine($"Created/confirmed folder: {baseFolder}");
+    private static void AddBook()
+    {
+        Console.Clear();
+        Console.WriteLine("--- Add Book ---");
 
-        // NOTE: Build a file path inside the ExampleFiles directory.
-        string filePath = Path.Combine(baseFolder, "notes.txt");
+        dynamic book = new ExpandoObject();
+        book.Id = _nextId++;
+        book.Name = ReadRequiredString("Book Name: ");
+        book.Author = ReadRequiredString("Author: ");
+        book.Publisher = ReadRequiredString("Publisher: ");
+        book.Price = ReadPositiveDecimal("Price: ");
 
-        // NOTE: Prepare the initial content for the file.
-        // NOTE: We use Environment.NewLine to ensure correct line breaks on any OS.
-        string initialContent = "NOTE: This file was created by the File Handling example."
-            + Environment.NewLine
-            + "NOTE: The next step will append more lines.";
+        Books.Add(book);
+        PrintMessage($"Book '{book.Name}' added successfully.");
+    }
 
-        // NOTE: Write the initial content to the file (overwrites if it exists).
-        File.WriteAllText(filePath, initialContent);
-        Console.WriteLine($"Wrote initial content to: {filePath}");
+    private static void UpdateBook()
+    {
+        Console.Clear();
+        Console.WriteLine("--- Update Book ---");
+        if (!TryGetBookById(out dynamic? book))
+        {
+            PrintMessage("Book not found. Press ENTER to return.");
+            return;
+        }
 
-        // NOTE: Prepare additional content that will be appended to the file.
-        string appendedContent = Environment.NewLine
-            + "NOTE: This line was appended later."
-            + Environment.NewLine
-            + $"NOTE: Timestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss}";
+        Console.WriteLine("Press ENTER to keep existing values.");
+        book.Name = ReadOptionalString($"Name ({book.Name}): ", book.Name);
+        book.Author = ReadOptionalString($"Author ({book.Author}): ", book.Author);
+        book.Publisher = ReadOptionalString($"Publisher ({book.Publisher}): ", book.Publisher);
+        book.Price = ReadOptionalDecimal($"Price ({book.Price}): ", book.Price);
 
-        // NOTE: Append the content instead of overwriting the file.
-        File.AppendAllText(filePath, appendedContent);
-        Console.WriteLine("Appended additional content.");
+        PrintMessage("Book updated successfully.");
+    }
 
-        // NOTE: Read the file contents back into a string.
-        string finalContent = File.ReadAllText(filePath);
+    private static void DeleteBook()
+    {
+        Console.Clear();
+        Console.WriteLine("--- Delete Book ---");
+        if (!TryGetBookById(out dynamic? book))
+        {
+            PrintMessage("Book not found. Press ENTER to return.");
+            return;
+        }
 
-        // NOTE: Display the final file contents so the user can verify the result.
-        Console.WriteLine("Final file contents:");
-        Console.WriteLine("----------------------------------------");
-        Console.WriteLine(finalContent);
-        Console.WriteLine("----------------------------------------");
+        Books.Remove(book);
+        PrintMessage("Book deleted successfully.");
+    }
 
-        // NOTE: Demonstrate basic file info (size and last write time).
-        FileInfo info = new FileInfo(filePath);
-        Console.WriteLine($"File size (bytes): {info.Length}");
-        Console.WriteLine($"Last modified: {info.LastWriteTime}");
+    private static void ViewAllBooks()
+    {
+        Console.Clear();
+        Console.WriteLine("--- Book List ---");
+
+        if (Books.Count == 0)
+        {
+            PrintMessage("No books available.");
+            return;
+        }
+
+        PrintBooks(Books);
+        PrintMessage("End of list.");
+    }
+
+    private static void SearchByName()
+    {
+        Console.Clear();
+        Console.WriteLine("--- Search by Name ---");
+        string term = ReadRequiredString("Enter book name: ");
+
+        List<dynamic> matches = Books
+            .Where(book => ContainsIgnoreCase(book.Name, term))
+            .ToList();
+
+        DisplaySearchResults(matches, "name");
+    }
+
+    private static void SearchByPublisher()
+    {
+        Console.Clear();
+        Console.WriteLine("--- Search by Publisher ---");
+        string term = ReadRequiredString("Enter publisher name: ");
+
+        List<dynamic> matches = Books
+            .Where(book => ContainsIgnoreCase(book.Publisher, term))
+            .ToList();
+
+        DisplaySearchResults(matches, "publisher");
+    }
+
+    private static void ShowHighestPriceBook()
+    {
+        Console.Clear();
+        Console.WriteLine("--- Highest Price Book ---");
+        if (Books.Count == 0)
+        {
+            PrintMessage("No books available.");
+            return;
+        }
+
+        dynamic book = Books.OrderByDescending(item => (decimal)item.Price).First();
+        PrintBooks(new List<dynamic> { book });
+        PrintMessage("Highest price book displayed.");
+    }
+
+    private static void ShowLowestPriceBook()
+    {
+        Console.Clear();
+        Console.WriteLine("--- Lowest Price Book ---");
+        if (Books.Count == 0)
+        {
+            PrintMessage("No books available.");
+            return;
+        }
+
+        dynamic book = Books.OrderBy(item => (decimal)item.Price).First();
+        PrintBooks(new List<dynamic> { book });
+        PrintMessage("Lowest price book displayed.");
+    }
+
+    private static bool TryGetBookById(out dynamic? book)
+    {
+        int id = ReadPositiveInt("Enter Book ID: ");
+        book = Books.FirstOrDefault(item => item.Id == id);
+        return book is not null;
+    }
+
+    private static void PrintBooks(IEnumerable<dynamic> books)
+    {
+        Console.WriteLine("ID  Name                     Author                  Publisher               Price");
+        Console.WriteLine("------------------------------------------------------------------------------------");
+        foreach (dynamic book in books)
+        {
+            Console.WriteLine(
+                $"{book.Id,-3} {Truncate(book.Name, 24),-24} {Truncate(book.Author, 22),-22} {Truncate(book.Publisher, 20),-20} {book.Price,8:C}");
+        }
+        Console.WriteLine("------------------------------------------------------------------------------------");
+    }
+
+    private static void DisplaySearchResults(List<dynamic> matches, string criteria)
+    {
+        if (matches.Count == 0)
+        {
+            PrintMessage($"No books found for that {criteria}.");
+            return;
+        }
+
+        PrintBooks(matches);
+        PrintMessage($"{matches.Count} book(s) found.");
+    }
+
+    private static void SeedSampleBooks()
+    {
+        AddSampleBook("Clean Code", "Robert C. Martin", "Prentice Hall", 39.99m);
+        AddSampleBook("The Pragmatic Programmer", "Andrew Hunt", "Addison-Wesley", 42.50m);
+        AddSampleBook("Refactoring", "Martin Fowler", "Addison-Wesley", 47.25m);
+    }
+
+    private static void AddSampleBook(string name, string author, string publisher, decimal price)
+    {
+        dynamic book = new ExpandoObject();
+        book.Id = _nextId++;
+        book.Name = name;
+        book.Author = author;
+        book.Publisher = publisher;
+        book.Price = price;
+        Books.Add(book);
+    }
+
+    private static string ReadRequiredString(string prompt)
+    {
+        string? input;
+        do
+        {
+            Console.Write(prompt);
+            input = Console.ReadLine();
+        } while (string.IsNullOrWhiteSpace(input));
+
+        return input.Trim();
+    }
+
+    private static string ReadOptionalString(string prompt, string currentValue)
+    {
+        Console.Write(prompt);
+        string? input = Console.ReadLine();
+        return string.IsNullOrWhiteSpace(input) ? currentValue : input.Trim();
+    }
+
+    private static decimal ReadPositiveDecimal(string prompt)
+    {
+        decimal value;
+        while (true)
+        {
+            Console.Write(prompt);
+            string? input = Console.ReadLine();
+            if (decimal.TryParse(input, NumberStyles.Number, CultureInfo.InvariantCulture, out value) && value >= 0)
+            {
+                return value;
+            }
+
+            Console.WriteLine("Please enter a valid non-negative price.");
+        }
+    }
+
+    private static decimal ReadOptionalDecimal(string prompt, decimal currentValue)
+    {
+        Console.Write(prompt);
+        string? input = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return currentValue;
+        }
+
+        if (decimal.TryParse(input, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal value) && value >= 0)
+        {
+            return value;
+        }
+
+        Console.WriteLine("Invalid price. Keeping existing value.");
+        return currentValue;
+    }
+
+    private static int ReadPositiveInt(string prompt)
+    {
+        int value;
+        while (true)
+        {
+            Console.Write(prompt);
+            string? input = Console.ReadLine();
+            if (int.TryParse(input, out value) && value > 0)
+            {
+                return value;
+            }
+
+            Console.WriteLine("Please enter a valid positive integer.");
+        }
+    }
+
+    private static bool ContainsIgnoreCase(string source, string term)
+    {
+        return source.Contains(term, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string Truncate(string value, int maxLength)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+
+        return value.Length <= maxLength ? value : value[..(maxLength - 3)] + "...";
+    }
+
+    private static void PrintMessage(string message)
+    {
+        Console.WriteLine();
+        Console.WriteLine(message);
+        Console.WriteLine("Press ENTER to continue...");
+        Console.ReadLine();
     }
 }
